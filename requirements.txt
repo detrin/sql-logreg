@@ -1,0 +1,10 @@
+scikit-learn
+numpy
+pandas
+tqdm
+polars
+matplotlib
+sqlalchemy
+psycopg2
+imbalanced-learn
+python-dotenv
