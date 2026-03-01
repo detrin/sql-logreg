@@ -7,7 +7,7 @@ from sqllogreg.data.splitter import Splitter
 from sqllogreg.optimizers.gradient import GradientDescent
 from sqllogreg.optimizers.lbfgs import LBFGS
 from sqllogreg.optimizers.madlib import MADlib
-from sqllogreg.optimizers.sql import SQLOptimizer
+from sqllogreg.optimizers.gradient_sql import GradientSQLOptimizer
 from sqllogreg.metrics.evaluator import Evaluator
 from sqllogreg.benchmark.runner import BenchmarkRunner
 
@@ -16,7 +16,7 @@ def cli():
     pass
 
 @cli.command()
-@click.option('--optimizer', type=click.Choice(['gd', 'lbfgs', 'madlib', 'sql']), required=True)
+@click.option('--optimizer', type=click.Choice(['gd', 'lbfgs', 'madlib', 'gradient_sql', 'lbfgs_sql']), required=True)
 @click.option('--data', default='data/winequality-red.csv')
 @click.option('--db-url', envvar='DATABASE_URL')
 def train(optimizer, data, db_url):
@@ -32,9 +32,13 @@ def train(optimizer, data, db_url):
     elif optimizer == 'madlib':
         engine = create_engine(db_url)
         opt = MADlib(engine)
-    elif optimizer == 'sql':
+    elif optimizer == 'gradient_sql':
         engine = create_engine(db_url)
-        opt = SQLOptimizer(engine)
+        opt = GradientSQLOptimizer(engine)
+    elif optimizer == 'lbfgs_sql':
+        from sqllogreg.optimizers.lbfgs_sql import LBFGSSQLOptimizer
+        engine = create_engine(db_url)
+        opt = LBFGSSQLOptimizer(engine)
 
     runner = BenchmarkRunner(Evaluator())
     result = runner.run([opt], X_train, y_train, X_test, y_test)
@@ -61,9 +65,13 @@ def benchmark(optimizers, data, db_url, output):
         elif opt_name == 'madlib':
             engine = create_engine(db_url)
             opts.append(MADlib(engine))
-        elif opt_name == 'sql':
+        elif opt_name == 'gradient_sql':
             engine = create_engine(db_url)
-            opts.append(SQLOptimizer(engine))
+            opts.append(GradientSQLOptimizer(engine))
+        elif opt_name == 'lbfgs_sql':
+            from sqllogreg.optimizers.lbfgs_sql import LBFGSSQLOptimizer
+            engine = create_engine(db_url)
+            opts.append(LBFGSSQLOptimizer(engine))
 
     runner = BenchmarkRunner(Evaluator())
     result = runner.run(opts, X_train, y_train, X_test, y_test)

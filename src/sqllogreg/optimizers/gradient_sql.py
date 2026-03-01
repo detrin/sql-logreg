@@ -4,9 +4,9 @@ from sqlalchemy import text
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
-class SQLOptimizer(BaseOptimizer):
+class GradientSQLOptimizer(BaseOptimizer):
     def __init__(self, engine, learning_rate=0.01, C=0.1, max_iter=1000,
-                 table_prefix="sql_logreg"):
+                 table_prefix="gradient_sql_logreg"):
         self.engine = engine
         self.learning_rate = learning_rate
         self.C = C
@@ -31,7 +31,7 @@ class SQLOptimizer(BaseOptimizer):
         final_loss = self._compute_loss(y, y_pred, weights)
 
         return TrainResult(
-            optimizer_name="SQL",
+            optimizer_name="GradientSQL",
             weights=weights,
             bias=bias,
             train_time=train_time,
