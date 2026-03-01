@@ -1,8 +1,29 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sqllogreg"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = [
+    "scikit-learn",
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "imbalanced-learn",
+    "python-dotenv",
+    "click",
+]
+
+[project.scripts]
+sqllogreg = "sqllogreg.cli:cli"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
