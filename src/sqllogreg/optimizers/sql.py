@@ -120,10 +120,58 @@ class SQLOptimizer(BaseOptimizer):
         return self.max_iter
 
     def _update_coefficients(self):
-        raise NotImplementedError("SQL gradient update requires feature-specific queries")
+        with self.engine.connect() as conn:
+            result = conn.execute(text(f"""
+                SELECT COUNT(*) FROM {self.coef_table}
+            """)).fetchone()
+            n_features = len([c for c in conn.execute(text(f"SELECT * FROM {self.data_table} LIMIT 1")).keys() if c.startswith('x')])
+
+            weight_cols = ", ".join([f"w{i}" for i in range(n_features)])
+            feature_cols = ", ".join([f"x{i}" for i in range(n_features)])
+
+            logit_expr = " + ".join([f"c.w{i} * d.x{i}" for i in range(n_features)])
+
+            grad_updates = []
+            for i in range(n_features):
+                grad_updates.append(f"""
+                    c.w{i} - {self.learning_rate} * (
+                        (SELECT AVG((1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) - d.target) * d.x{i})
+                         FROM {self.data_table} d, {self.coef_table} c2
+                         WHERE c2.id = (SELECT MAX(id) FROM {self.coef_table}))
+                    ) AS w{i}
+                """)
+
+            grad_updates_str = ", ".join(grad_updates)
+
+            conn.execute(text(f"""
+                INSERT INTO {self.coef_table} ({weight_cols}, bias)
+                SELECT {grad_updates_str},
+                       c.bias - {self.learning_rate} * (
+                           SELECT AVG(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) - d.target)
+                           FROM {self.data_table} d
+                       )
+                FROM {self.coef_table} c
+                WHERE c.id = (SELECT MAX(id) FROM {self.coef_table})
+            """))
+            conn.commit()
 
     def _compute_current_loss(self):
-        return 0.0
+        with self.engine.connect() as conn:
+            n_features = len([c for c in conn.execute(text(f"SELECT * FROM {self.data_table} LIMIT 1")).keys() if c.startswith('x')])
+            logit_expr = " + ".join([f"c.w{i} * d.x{i}" for i in range(n_features)])
+
+            result = conn.execute(text(f"""
+                SELECT AVG(
+                    -1.0 * (
+                        d.target * LN(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9) +
+                        (1 - d.target) * LN(1 - 1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9)
+                    )
+                ) as loss
+                FROM {self.data_table} d, {self.coef_table} c
+                WHERE c.id = (SELECT MAX(id) FROM {self.coef_table})
+            """)).fetchone()
+
+            return float(result[0]) if result[0] is not None else 0.0
 
     def _extract_coefficients(self):
         with self.engine.connect() as conn:
