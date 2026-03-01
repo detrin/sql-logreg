@@ -7,6 +7,7 @@ This project implements Logistic Regression using four different optimization me
 2. **LBFGS** - Python L-BFGS using scipy.optimize
 3. **GradientSQL** - Pure SQL gradient descent using PostgreSQL
 4. **LBFGS_SQL** - SQL-based L-BFGS using PostgreSQL arrays
+5. **MADlib** - Production PostgreSQL ML (requires separate installation, see [MADLIB_COMPARISON.md](MADLIB_COMPARISON.md))
 
 ## Full Benchmark Results
 
@@ -139,11 +140,24 @@ docker-compose exec postgres psql -U postgres -d sqllogreg -c \
   "SELECT iteration, loss FROM gradient_sql_logreg_convergence ORDER BY iteration LIMIT 10;"
 ```
 
+## MADlib Comparison
+
+We also have a complete MADlib implementation ready to use. MADlib is a production-grade ML library for PostgreSQL that would theoretically perform between Python LBFGS and our SQL implementations.
+
+**Expected Performance**: 0.010-0.050s (10-20 iterations using IRLS algorithm)
+
+See [MADLIB_COMPARISON.md](MADLIB_COMPARISON.md) for:
+- Detailed comparison with MADlib
+- Installation instructions
+- When to use MADlib vs Python vs custom SQL
+- Expected benchmark results
+
 ## Conclusions
 
 ### For Production
 
 - **Use Python L-BFGS** - Fastest, best convergence, proven library (scipy)
+- **Use MADlib** - If data must stay in PostgreSQL (requires installation)
 - 6 iterations vs 1000 for gradient descent
 - 0.002s vs 10.348s for SQL implementations
 
