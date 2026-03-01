@@ -1,11 +1,11 @@
 services:
   postgres:
     image: postgres:14-alpine
+    command: postgres -c shared_buffers=256MB -c max_connections=200
     environment:
       POSTGRES_DB: sqllogreg
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c max_connections=200"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-madlib.sh:/docker-entrypoint-initdb.d/init-madlib.sh
