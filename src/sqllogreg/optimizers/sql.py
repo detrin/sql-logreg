@@ -131,11 +131,13 @@ class SQLOptimizer(BaseOptimizer):
 
             logit_expr = " + ".join([f"c.w{i} * d.x{i}" for i in range(n_features)])
 
+            logit_expr_sub = " + ".join([f"c2.w{i} * d.x{i}" for i in range(n_features)])
+
             grad_updates = []
             for i in range(n_features):
                 grad_updates.append(f"""
                     c.w{i} - {self.learning_rate} * (
-                        (SELECT AVG((1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) - d.target) * d.x{i})
+                        (SELECT AVG((1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.target) * d.x{i})
                          FROM {self.data_table} d, {self.coef_table} c2
                          WHERE c2.id = (SELECT MAX(id) FROM {self.coef_table}))
                     ) AS w{i}
@@ -147,8 +149,9 @@ class SQLOptimizer(BaseOptimizer):
                 INSERT INTO {self.coef_table} ({weight_cols}, bias)
                 SELECT {grad_updates_str},
                        c.bias - {self.learning_rate} * (
-                           SELECT AVG(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) - d.target)
-                           FROM {self.data_table} d
+                           SELECT AVG(1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.target)
+                           FROM {self.data_table} d, {self.coef_table} c2
+                           WHERE c2.id = (SELECT MAX(id) FROM {self.coef_table})
                        )
                 FROM {self.coef_table} c
                 WHERE c.id = (SELECT MAX(id) FROM {self.coef_table})
