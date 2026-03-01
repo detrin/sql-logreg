@@ -137,7 +137,7 @@ class SQLOptimizer(BaseOptimizer):
             for i in range(n_features):
                 grad_updates.append(f"""
                     c.w{i} - {self.learning_rate} * (
-                        (SELECT AVG((1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.target) * d.x{i})
+                        (SELECT AVG((1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.y) * d.x{i})
                          FROM {self.data_table} d, {self.coef_table} c2
                          WHERE c2.id = (SELECT MAX(id) FROM {self.coef_table}))
                     ) AS w{i}
@@ -149,7 +149,7 @@ class SQLOptimizer(BaseOptimizer):
                 INSERT INTO {self.coef_table} ({weight_cols}, bias)
                 SELECT {grad_updates_str},
                        c.bias - {self.learning_rate} * (
-                           SELECT AVG(1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.target)
+                           SELECT AVG(1.0 / (1.0 + EXP(-({logit_expr_sub} + c2.bias))) - d.y)
                            FROM {self.data_table} d, {self.coef_table} c2
                            WHERE c2.id = (SELECT MAX(id) FROM {self.coef_table})
                        )
@@ -166,8 +166,8 @@ class SQLOptimizer(BaseOptimizer):
             result = conn.execute(text(f"""
                 SELECT AVG(
                     -1.0 * (
-                        d.target * LN(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9) +
-                        (1 - d.target) * LN(1 - 1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9)
+                        d.y * LN(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9) +
+                        (1 - d.y) * LN(1 - 1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9)
                     )
                 ) as loss
                 FROM {self.data_table} d, {self.coef_table} c
