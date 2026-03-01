@@ -3,6 +3,7 @@ from sqllogreg.benchmark.runner import BenchmarkRunner
 from sqllogreg.metrics.evaluator import Evaluator
 from sqllogreg.optimizers.gradient import GradientDescent
 
+
 def test_benchmark_runner():
     np.random.seed(42)
     X_train = np.random.randn(100, 5)

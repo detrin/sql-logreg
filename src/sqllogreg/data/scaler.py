@@ -1,5 +1,6 @@
 from sklearn.preprocessing import StandardScaler
 
+
 class Scaler:
     def __init__(self):
         self._scaler = StandardScaler()

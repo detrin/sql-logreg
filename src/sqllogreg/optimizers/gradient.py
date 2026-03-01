@@ -3,6 +3,7 @@ import time
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
+
 class GradientDescent(BaseOptimizer):
     def __init__(self, lr=0.01, C=0.1, tol=1e-4, max_iter=1000, decay=0.0):
         self.lr = lr
@@ -47,13 +48,15 @@ class GradientDescent(BaseOptimizer):
             train_f1=0.0,
             test_auc=0.0,
             test_f1=0.0,
-            convergence_info={"losses": losses}
+            convergence_info={"losses": losses},
         )
 
     def _compute_loss(self, y_true, y_pred, weights):
         eps = 1e-9
-        bce = -np.mean(y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps))
-        l2_penalty = 0.5 * self.C * np.sum(weights ** 2)
+        bce = -np.mean(
+            y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps)
+        )
+        l2_penalty = 0.5 * self.C * np.sum(weights**2)
         return bce + l2_penalty
 
     def _compute_gradients(self, X, y_true, y_pred, weights):

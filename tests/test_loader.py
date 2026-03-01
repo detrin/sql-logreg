@@ -1,6 +1,7 @@
 import numpy as np
 from sqllogreg.data.loader import DataLoader
 
+
 def test_load_data():
     loader = DataLoader()
     X, y = loader.load("data/winequality-red.csv")

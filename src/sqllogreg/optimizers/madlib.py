@@ -4,6 +4,7 @@ from sqlalchemy import text
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
+
 class MADlib(BaseOptimizer):
     def __init__(self, engine, C=0.1, max_iter=1000, table_name="madlib_logreg"):
         self.engine = engine
@@ -36,8 +37,8 @@ class MADlib(BaseOptimizer):
             test_f1=0.0,
             convergence_info={
                 "method": "madlib.logregr_train",
-                "table": self.table_name
-            }
+                "table": self.table_name,
+            },
         )
 
     def _create_training_table(self, X, y):
@@ -105,6 +106,8 @@ class MADlib(BaseOptimizer):
 
     def _compute_loss(self, y_true, y_pred, weights):
         eps = 1e-9
-        bce = -np.mean(y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps))
-        l2_penalty = 0.5 * self.C * np.sum(weights ** 2)
+        bce = -np.mean(
+            y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps)
+        )
+        l2_penalty = 0.5 * self.C * np.sum(weights**2)
         return bce + l2_penalty

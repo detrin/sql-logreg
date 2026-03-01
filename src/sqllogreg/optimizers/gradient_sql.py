@@ -4,9 +4,16 @@ from sqlalchemy import text
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
+
 class GradientSQLOptimizer(BaseOptimizer):
-    def __init__(self, engine, learning_rate=0.01, C=0.1, max_iter=1000,
-                 table_prefix="gradient_sql_logreg"):
+    def __init__(
+        self,
+        engine,
+        learning_rate=0.01,
+        C=0.1,
+        max_iter=1000,
+        table_prefix="gradient_sql_logreg",
+    ):
         self.engine = engine
         self.learning_rate = learning_rate
         self.C = C
@@ -43,8 +50,8 @@ class GradientSQLOptimizer(BaseOptimizer):
             test_f1=0.0,
             convergence_info={
                 "method": "raw_sql_gradient_descent",
-                "learning_rate": self.learning_rate
-            }
+                "learning_rate": self.learning_rate,
+            },
         )
 
     def _create_tables(self, X, y, n_features):
@@ -87,22 +94,26 @@ class GradientSQLOptimizer(BaseOptimizer):
             conn.execute(text(create_coef))
             conn.commit()
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 CREATE TABLE {self.conv_table} (
                     iteration INT PRIMARY KEY,
                     loss FLOAT
                 )
-            """))
+            """)
+            )
             conn.commit()
 
     def _initialize_coefficients(self, n_features):
         with self.engine.connect() as conn:
             cols = ", ".join([f"w{i}" for i in range(n_features)])
             values = ", ".join(["0"] * n_features)
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {self.coef_table} ({cols}, bias)
                 VALUES ({values}, 0)
-            """))
+            """)
+            )
             conn.commit()
 
     def _train_loop(self):
@@ -111,27 +122,33 @@ class GradientSQLOptimizer(BaseOptimizer):
             loss = self._compute_current_loss()
 
             with self.engine.connect() as conn:
-                conn.execute(text(f"""
+                conn.execute(
+                    text(f"""
                     INSERT INTO {self.conv_table} (iteration, loss)
                     VALUES ({iteration}, {loss})
-                """))
+                """)
+                )
                 conn.commit()
 
         return self.max_iter
 
     def _update_coefficients(self):
         with self.engine.connect() as conn:
-            result = conn.execute(text(f"""
-                SELECT COUNT(*) FROM {self.coef_table}
-            """)).fetchone()
-            n_features = len([c for c in conn.execute(text(f"SELECT * FROM {self.data_table} LIMIT 1")).keys() if c.startswith('x')])
+            n_features = len(
+                [
+                    c
+                    for c in conn.execute(
+                        text(f"SELECT * FROM {self.data_table} LIMIT 1")
+                    ).keys()
+                    if c.startswith("x")
+                ]
+            )
 
             weight_cols = ", ".join([f"w{i}" for i in range(n_features)])
-            feature_cols = ", ".join([f"x{i}" for i in range(n_features)])
 
-            logit_expr = " + ".join([f"c.w{i} * d.x{i}" for i in range(n_features)])
-
-            logit_expr_sub = " + ".join([f"c2.w{i} * d.x{i}" for i in range(n_features)])
+            logit_expr_sub = " + ".join(
+                [f"c2.w{i} * d.x{i}" for i in range(n_features)]
+            )
 
             grad_updates = []
             for i in range(n_features):
@@ -145,7 +162,8 @@ class GradientSQLOptimizer(BaseOptimizer):
 
             grad_updates_str = ", ".join(grad_updates)
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {self.coef_table} ({weight_cols}, bias)
                 SELECT {grad_updates_str},
                        c.bias - {self.learning_rate} * (
@@ -155,15 +173,25 @@ class GradientSQLOptimizer(BaseOptimizer):
                        )
                 FROM {self.coef_table} c
                 WHERE c.id = (SELECT MAX(id) FROM {self.coef_table})
-            """))
+            """)
+            )
             conn.commit()
 
     def _compute_current_loss(self):
         with self.engine.connect() as conn:
-            n_features = len([c for c in conn.execute(text(f"SELECT * FROM {self.data_table} LIMIT 1")).keys() if c.startswith('x')])
+            n_features = len(
+                [
+                    c
+                    for c in conn.execute(
+                        text(f"SELECT * FROM {self.data_table} LIMIT 1")
+                    ).keys()
+                    if c.startswith("x")
+                ]
+            )
             logit_expr = " + ".join([f"c.w{i} * d.x{i}" for i in range(n_features)])
 
-            result = conn.execute(text(f"""
+            result = conn.execute(
+                text(f"""
                 SELECT AVG(
                     -1.0 * (
                         d.y * LN(1.0 / (1.0 + EXP(-({logit_expr} + c.bias))) + 1e-9) +
@@ -172,7 +200,8 @@ class GradientSQLOptimizer(BaseOptimizer):
                 ) as loss
                 FROM {self.data_table} d, {self.coef_table} c
                 WHERE c.id = (SELECT MAX(id) FROM {self.coef_table})
-            """)).fetchone()
+            """)
+            ).fetchone()
 
             return float(result[0]) if result[0] is not None else 0.0
 
@@ -189,6 +218,8 @@ class GradientSQLOptimizer(BaseOptimizer):
 
     def _compute_loss(self, y_true, y_pred, weights):
         eps = 1e-9
-        bce = -np.mean(y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps))
-        l2_penalty = 0.5 * self.C * np.sum(weights ** 2)
+        bce = -np.mean(
+            y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps)
+        )
+        l2_penalty = 0.5 * self.C * np.sum(weights**2)
         return bce + l2_penalty

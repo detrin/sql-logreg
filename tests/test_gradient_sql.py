@@ -3,10 +3,12 @@ import pytest
 from sqlalchemy import create_engine
 from sqllogreg.optimizers.gradient_sql import GradientSQLOptimizer
 
+
 @pytest.fixture
 def db_engine():
     engine = create_engine("postgresql://postgres:postgres@localhost:5432/sqllogreg")
     return engine
+
 
 def test_gradient_sql_converges(db_engine):
     np.random.seed(42)
@@ -20,6 +22,7 @@ def test_gradient_sql_converges(db_engine):
     assert result.iterations == 50
     assert result.final_loss < 1.0
     assert len(result.weights) == 5
+
 
 def test_gradient_sql_creates_tables(db_engine):
     np.random.seed(42)

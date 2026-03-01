@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
+
 class LBFGS(BaseOptimizer):
     def __init__(self, C=0.1, tol=1e-4, max_iter=1000):
         self.C = C
@@ -23,9 +24,9 @@ class LBFGS(BaseOptimizer):
         result = minimize(
             fun=self._objective,
             x0=params_init,
-            method='L-BFGS-B',
+            method="L-BFGS-B",
             jac=self._gradient,
-            options={'maxiter': self.max_iter, 'ftol': self.tol}
+            options={"maxiter": self.max_iter, "ftol": self.tol},
         )
 
         weights = result.x[:-1]
@@ -50,8 +51,8 @@ class LBFGS(BaseOptimizer):
             convergence_info={
                 "success": result.success,
                 "message": result.message,
-                "nfev": result.nfev
-            }
+                "nfev": result.nfev,
+            },
         )
 
     def _objective(self, params):
@@ -75,6 +76,8 @@ class LBFGS(BaseOptimizer):
 
     def _compute_loss(self, y_true, y_pred, weights):
         eps = 1e-9
-        bce = -np.mean(y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps))
-        l2_penalty = 0.5 * self.C * np.sum(weights ** 2)
+        bce = -np.mean(
+            y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps)
+        )
+        l2_penalty = 0.5 * self.C * np.sum(weights**2)
         return bce + l2_penalty

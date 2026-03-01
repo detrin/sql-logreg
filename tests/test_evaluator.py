@@ -1,6 +1,7 @@
 import numpy as np
 from sqllogreg.metrics.evaluator import Evaluator
 
+
 def test_calculate_metrics():
     evaluator = Evaluator()
     y_true = np.array([0, 0, 1, 1])
@@ -12,6 +13,7 @@ def test_calculate_metrics():
     assert metrics["accuracy"] == 1.0
     assert metrics["f1"] == 1.0
     assert metrics["auc"] == 1.0
+
 
 def test_calculate_metrics_imperfect():
     evaluator = Evaluator()

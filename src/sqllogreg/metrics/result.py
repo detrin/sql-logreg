@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import json
 
+
 @dataclass
 class TrainResult:
     optimizer_name: str
@@ -19,9 +20,10 @@ class TrainResult:
 
     def to_dict(self):
         result = dict(self.__dict__)
-        result['weights'] = self.weights.tolist()
-        result['bias'] = float(result['bias'])
+        result["weights"] = self.weights.tolist()
+        result["bias"] = float(result["bias"])
         return result
+
 
 @dataclass
 class BenchmarkResult:
@@ -31,14 +33,14 @@ class BenchmarkResult:
         data = []
         for r in self.results:
             d = r.to_dict()
-            d['optimizer'] = d.pop('optimizer_name')
-            d.pop('weights', None)
-            d.pop('convergence_info', None)
+            d["optimizer"] = d.pop("optimizer_name")
+            d.pop("weights", None)
+            d.pop("convergence_info", None)
             data.append(d)
         return pd.DataFrame(data)
 
     def to_json(self, path):
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump([r.to_dict() for r in self.results], f, indent=2)
 
     def summary(self):

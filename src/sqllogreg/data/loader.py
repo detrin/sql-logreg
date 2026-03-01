@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+
 
 class DataLoader:
     def load(self, path):
@@ -16,9 +16,11 @@ class DataLoader:
         return X, y
 
     def _clean_name(self, name):
-        return (name.replace(" ", "_")
-                    .replace("(", "")
-                    .replace(")", "")
-                    .replace("/", "_")
-                    .replace("-", "_")
-                    .lower())
+        return (
+            name.replace(" ", "_")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("/", "_")
+            .replace("-", "_")
+            .lower()
+        )

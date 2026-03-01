@@ -4,8 +4,11 @@ from sqlalchemy import text
 from sqllogreg.optimizers.base import BaseOptimizer
 from sqllogreg.metrics.result import TrainResult
 
+
 class LBFGSSQLOptimizer(BaseOptimizer):
-    def __init__(self, engine, m=5, max_iter=100, table_prefix="lbfgs_sql_logreg", tol=1e-5):
+    def __init__(
+        self, engine, m=5, max_iter=100, table_prefix="lbfgs_sql_logreg", tol=1e-5
+    ):
         self.engine = engine
         self.m = m
         self.max_iter = max_iter
@@ -50,7 +53,7 @@ class LBFGSSQLOptimizer(BaseOptimizer):
             train_f1=0.0,
             test_auc=0.0,
             test_f1=0.0,
-            convergence_info={"method": "sql_lbfgs", "memory": self.m}
+            convergence_info={"method": "sql_lbfgs", "memory": self.m},
         )
 
     def _create_tables(self, X, y, n_features):
@@ -63,24 +66,29 @@ class LBFGSSQLOptimizer(BaseOptimizer):
             conn.commit()
 
             col_defs = ", ".join([f"x{i} FLOAT" for i in range(n_features)])
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 CREATE TABLE {self.data_table} (
                     id SERIAL PRIMARY KEY,
                     {col_defs},
                     y INT
                 )
-            """))
+            """)
+            )
             conn.commit()
 
             for i in range(n_samples):
                 values = ", ".join(map(str, X[i])) + f", {int(y[i])}"
-                conn.execute(text(f"""
+                conn.execute(
+                    text(f"""
                     INSERT INTO {self.data_table} ({", ".join([f"x{j}" for j in range(n_features)])}, y)
                     VALUES ({values})
-                """))
+                """)
+                )
             conn.commit()
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 CREATE TABLE {self.state_table} (
                     id SERIAL PRIMARY KEY,
                     weights FLOAT[],
@@ -88,34 +96,41 @@ class LBFGSSQLOptimizer(BaseOptimizer):
                     gradient FLOAT[],
                     grad_bias FLOAT
                 )
-            """))
+            """)
+            )
             conn.commit()
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 CREATE TABLE {self.history_table} (
                     iteration INT PRIMARY KEY,
                     s FLOAT[],
                     y FLOAT[],
                     rho FLOAT
                 )
-            """))
+            """)
+            )
             conn.commit()
 
     def _initialize_state(self, n_features):
         with self.engine.connect() as conn:
             zeros = "{" + ",".join(["0"] * n_features) + "}"
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {self.state_table} (weights, bias, gradient, grad_bias)
                 VALUES ('{zeros}', 0, '{zeros}', 0)
-            """))
+            """)
+            )
             conn.commit()
 
     def _compute_gradient(self):
         with self.engine.connect() as conn:
-            result = conn.execute(text(f"""
+            result = conn.execute(
+                text(f"""
                 SELECT array_length(weights, 1) FROM {self.state_table}
                 WHERE id = (SELECT MAX(id) FROM {self.state_table})
-            """)).fetchone()
+            """)
+            ).fetchone()
             n_features = result[0]
 
             grad_queries = []
@@ -123,7 +138,7 @@ class LBFGSSQLOptimizer(BaseOptimizer):
                 grad_queries.append(f"""
                     (SELECT AVG(
                         (1.0 / (1.0 + EXP(-(
-                            {' + '.join([f's.weights[{j+1}] * d.x{j}' for j in range(n_features)])}
+                            {" + ".join([f"s.weights[{j + 1}] * d.x{j}" for j in range(n_features)])}
                             + s.bias
                         ))) - d.y) * d.x{i}
                     ) FROM {self.data_table} d, {self.state_table} s
@@ -132,28 +147,32 @@ class LBFGSSQLOptimizer(BaseOptimizer):
 
             grad_array = "ARRAY[" + ", ".join(grad_queries) + "]"
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 UPDATE {self.state_table}
                 SET gradient = {grad_array},
                     grad_bias = (
                         SELECT AVG(
                             1.0 / (1.0 + EXP(-(
-                                {' + '.join([f's.weights[{j+1}] * d.x{j}' for j in range(n_features)])}
+                                {" + ".join([f"s.weights[{j + 1}] * d.x{j}" for j in range(n_features)])}
                                 + s.bias
                             ))) - d.y
                         ) FROM {self.data_table} d, {self.state_table} s
                         WHERE s.id = (SELECT MAX(id) FROM {self.state_table})
                     )
                 WHERE id = (SELECT MAX(id) FROM {self.state_table})
-            """))
+            """)
+            )
             conn.commit()
 
-            result = conn.execute(text(f"""
+            result = conn.execute(
+                text(f"""
                 SELECT
                     (SELECT SUM(g*g) FROM unnest(gradient) g) + grad_bias*grad_bias as norm_sq
                 FROM {self.state_table}
                 WHERE id = (SELECT MAX(id) FROM {self.state_table})
-            """)).fetchone()
+            """)
+            ).fetchone()
 
             return np.sqrt(result[0]) if result[0] else 0.0
 
@@ -161,12 +180,19 @@ class LBFGSSQLOptimizer(BaseOptimizer):
         with self.engine.connect() as conn:
             alpha = 0.01
 
-            update_expr = "ARRAY[" + ", ".join([
-                f"s.weights[{i+1}] - {alpha} * s.gradient[{i+1}]"
-                for i in range(n_features)
-            ]) + "]"
+            update_expr = (
+                "ARRAY["
+                + ", ".join(
+                    [
+                        f"s.weights[{i + 1}] - {alpha} * s.gradient[{i + 1}]"
+                        for i in range(n_features)
+                    ]
+                )
+                + "]"
+            )
 
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {self.state_table} (weights, bias, gradient, grad_bias)
                 SELECT
                     {update_expr},
@@ -175,16 +201,19 @@ class LBFGSSQLOptimizer(BaseOptimizer):
                     s.grad_bias
                 FROM {self.state_table} s
                 WHERE s.id = (SELECT MAX(id) FROM {self.state_table})
-            """))
+            """)
+            )
             conn.commit()
 
     def _extract_coefficients(self):
         with self.engine.connect() as conn:
-            result = conn.execute(text(f"""
+            result = conn.execute(
+                text(f"""
                 SELECT weights, bias
                 FROM {self.state_table}
                 WHERE id = (SELECT MAX(id) FROM {self.state_table})
-            """)).fetchone()
+            """)
+            ).fetchone()
 
             weights = np.array(result[0])
             bias = result[1]
@@ -193,5 +222,7 @@ class LBFGSSQLOptimizer(BaseOptimizer):
 
     def _compute_loss(self, y_true, y_pred, weights):
         eps = 1e-9
-        bce = -np.mean(y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps))
+        bce = -np.mean(
+            y_true * np.log(y_pred + eps) + (1 - y_true) * np.log(1 - y_pred + eps)
+        )
         return bce

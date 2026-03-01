@@ -1,6 +1,7 @@
 import numpy as np
 from sqllogreg.optimizers.gradient import GradientDescent
 
+
 def test_gradient_descent_converges():
     np.random.seed(42)
     X = np.random.randn(100, 5)

@@ -5,4 +5,11 @@ from sqllogreg.optimizers.madlib import MADlib
 from sqllogreg.optimizers.gradient_sql import GradientSQLOptimizer
 from sqllogreg.optimizers.lbfgs_sql import LBFGSSQLOptimizer
 
-__all__ = ['BaseOptimizer', 'GradientDescent', 'LBFGS', 'MADlib', 'GradientSQLOptimizer', 'LBFGSSQLOptimizer']
+__all__ = [
+    "BaseOptimizer",
+    "GradientDescent",
+    "LBFGS",
+    "MADlib",
+    "GradientSQLOptimizer",
+    "LBFGSSQLOptimizer",
+]

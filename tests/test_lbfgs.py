@@ -1,6 +1,7 @@
 import numpy as np
 from sqllogreg.optimizers.lbfgs import LBFGS
 
+
 def test_lbfgs_converges():
     np.random.seed(42)
     X = np.random.randn(100, 5)

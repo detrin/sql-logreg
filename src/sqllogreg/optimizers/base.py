@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
+
 class BaseOptimizer(ABC):
     @abstractmethod
     def fit(self, X, y):
